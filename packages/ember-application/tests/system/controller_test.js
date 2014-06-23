@@ -1,12 +1,14 @@
 /*jshint newcap:false */
 
 import Controller from "ember-runtime/controllers/controller";
+import Object from "ember-runtime/system/object";
 import "ember-application/ext/controller";
 
 import Container from "ember-runtime/system/container";
 import { A } from "ember-runtime/system/native_array";
 import ArrayController from "ember-runtime/controllers/array_controller";
 import { computed } from "ember-metal/computed";
+import { inject } from "ember-metal/inject";
 
 QUnit.module("Controller dependencies");
 
@@ -153,3 +155,64 @@ test("can unit test controllers with `needs` dependencies by stubbing their `con
   equal(broController.get('foo'), 5, "`needs` dependencies can be stubbed");
 });
 
+if (Ember.FEATURES.isEnabled('ember-metal-service-injection')) {
+  test("defining a controller on a non-controller should error", function(){
+    expectAssertion(function(){
+      Object.extend({
+        foo: inject.controller('bar')
+      });
+    }, /Defining an injected controller property on a non-controller is not allowed./);
+  });
+
+  test("injecting into a controller without a container should error", function(){
+    var AController = Controller.extend({
+      posts: inject.controller('posts')
+    });
+
+    expectAssertion(function(){
+      AController.create();
+    }, /defines an injected property, but does not have a container. Ensure that the object was instantiated via a container./);
+  });
+
+  test("controllers can be injected into controllers", function() {
+    var container = new Container();
+
+    container.register('controller:post', Controller.extend({
+      postsController: inject.controller('posts')
+    }));
+
+    container.register('controller:posts', Controller.extend());
+
+    var postController = container.lookup('controller:post'),
+    postsController = container.lookup('controller:posts');
+
+    equal(postsController, postController.get('postsController'), "controller.posts is injected");
+  });
+
+  test("the controller name is inferred from the property name if not specified", function() {
+    var container = new Container();
+
+    container.register('controller:post', Controller.extend({
+      posts: inject.controller()
+    }));
+
+    container.register('controller:posts', Controller.extend());
+
+    var postController = container.lookup('controller:post'),
+    postsController = container.lookup('controller:posts');
+
+    equal(postsController, postController.get('posts'), "controller.posts is injected");
+  });
+
+  test("injecting a nonexistent controller raises", function(){
+    var container = new Container();
+
+    container.register('controller:post', Controller.extend({
+      posts: inject.controller('posts')
+    }));
+
+    throws(function() {
+      container.lookup('controller:post');
+    }, /controller:posts/);
+  });
+}

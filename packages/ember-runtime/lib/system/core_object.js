@@ -38,6 +38,7 @@ import ActionHandler from "ember-runtime/mixins/action_handler";
 import {defineProperty} from "ember-metal/properties";
 import { Binding } from "ember-metal/binding";
 import { ComputedProperty } from "ember-metal/computed";
+import { verifyInjectionDependencies } from "ember-metal/inject";
 import run from 'ember-metal/run_loop';
 import { destroy } from "ember-metal/watching";
 
@@ -160,6 +161,7 @@ function makeCtor() {
       }
     }
     finishPartial(this, m);
+    verifyInjectionDependencies(this, m);
     apply(this, this.init, arguments);
     m.proto = proto;
     finishChains(this);
